@@ -1,6 +1,17 @@
 # pixcrush
 
-**pixcrush** is a CLI tool that automatically migrates React, Next.js, and Turborepo projects to optimized WebP images and rewrites source code references to match.
+[![npm version](https://img.shields.io/npm/v/pixcrush)](https://www.npmjs.com/package/pixcrush)
+[![npm downloads](https://img.shields.io/npm/dm/pixcrush)](https://www.npmjs.com/package/pixcrush)
+[![license](https://img.shields.io/npm/l/pixcrush)](./LICENSE)
+[![node](https://img.shields.io/node/v/pixcrush)](https://nodejs.org)
+
+**pixcrush** is a CLI tool that automatically migrates React, Next.js, and Turborepo projects to optimized WebP images and rewrites source code references to match. It converts PNG and JPG images to optimized WebP, compresses them, and safely rewrites your source code references so nothing breaks.
+
+## Why pixcrush?
+
+Most real-world React and Next.js codebases have hundreds of PNG and JPG images sitting in `/public` or scattered across the repo. Converting them to modern formats is boring, risky, and time-consuming because you also have to update imports and `src` paths everywhere.
+
+pixcrush automates this entire migration safely and repeatably.
 
 ## Quickstart
 
@@ -31,8 +42,6 @@ If you don't pass any flags, pixcrush will ask you two quick questions before ru
 | `--help`             | Show usage info                                      |
 | `--version`          | Show version                                         |
 
-### Examples
-
 ```bash
 # Preview what would happen with no files modified
 pixcrush . --dry-run
@@ -51,12 +60,12 @@ pixcrush . --delete-originals --quality 85
 
 ## Features
 
-- **Safe AST rewrites** - Uses Babel to update `import hero from './hero.png'` and `<Image src="/images/bg.png" />` to `.webp` without reformatting your files.
+- **Safe AST rewrites** - Uses Babel to update imports and JSX src attributes to .webp without reformatting your files.
 - **Smart compression** - Skips conversion if the resulting WebP would be larger than the original.
 - **Next.js and Turborepo support** - Resolves deeply nested `apps/web/public/` paths so absolute image links like `src="/images/hero.png"` are matched correctly.
 - **Orphan detection** - Reports any image that is never referenced in your source code.
 - **Garbage collection** - With `--delete-originals`, also removes unused orphaned images automatically.
-- **SEO safe** - Ignores framework metadata assets like `favicon*.png`, `apple-icon*.png`, `opengraph-image*.png`, and PWA manifest icons so they are never accidentally deleted.
+- **SEO safe** - Ignores framework metadata assets like `favicon*.png`, `apple-icon*.png`, `opengraph-image*.png`, and PWA manifest icons so critical metadata images are never touched.
 
 ---
 
@@ -84,6 +93,15 @@ Run with `DEBUG_CRUSH=1` to see verbose path resolution output:
 ```bash
 DEBUG_CRUSH=1 pixcrush .
 ```
+
+---
+
+## Author
+
+Built by **Karishma Garg** — Frontend Engineer
+
+- GitHub: [@karishma-dev](https://github.com/karishma-dev)
+- Portfolio: [karishma.dev](https://karishma.dev)
 
 ---
 
