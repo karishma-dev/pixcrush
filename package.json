@@ -1,6 +1,6 @@
 {
   "name": "pixcrush",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "A CLI tool that converts PNG and JPG images to WebP and rewrites React and Next.js code references automatically.",
   "main": "dist/cli.js",
   "author": "Karishma Garg",
