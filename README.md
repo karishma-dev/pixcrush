@@ -5,7 +5,7 @@
 [![license](https://img.shields.io/npm/l/pixcrush)](./LICENSE)
 [![node](https://img.shields.io/node/v/pixcrush)](https://nodejs.org)
 
-**pixcrush** is a CLI tool that automatically migrates React, Next.js, and Turborepo projects to optimized WebP images and rewrites source code references to match. It converts PNG and JPG images to optimized WebP, compresses them, and safely rewrites your source code references so nothing breaks.
+**pixcrush** is a CLI tool that converts PNG and JPG images to optimized WebP, compresses them, and safely rewrites your source code references so nothing breaks.
 
 ## Why pixcrush?
 
@@ -98,7 +98,7 @@ DEBUG_CRUSH=1 pixcrush .
 
 ## Author
 
-Built by **Karishma Garg** — Frontend Engineer
+Built by **Karishma Garg** — Product Engineer
 
 - GitHub: [@karishma-dev](https://github.com/karishma-dev)
 - Portfolio: [karishma.dev](https://karishma.dev)
