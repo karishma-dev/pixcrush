@@ -1,15 +1,13 @@
-import React from 'react';
-import heroImg from './hero.webp';
-import missing from './missing.png'; // doesn't exist on disk
-
+import hero from "./hero.jpg"
 export default function App() {
-  const dynamic = '/dynamic' + '.png';
   return (
     <div>
-      <img src="/logo.png" alt="Logo" />
-      <img src={heroImg} alt="Hero" />
-      <img src={dynamic} alt="Dynamic" />
-      <img src="http://example.com/external.png" />
-    </div>);
-
+      <img src={hero} alt="hero" />
+      <picture>
+        <source srcSet="/images/hero.jpg 1x, /images/hero-2x.jpg 2x" />
+        <img src="/images/hero.jpg" alt="hero" />
+      </picture>
+    </div>
+  );
 }
+

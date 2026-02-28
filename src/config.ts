@@ -1,8 +1,4 @@
-export interface CrushOptions {
-  dryRun: boolean;
-  quality: number;
-  deleteOriginals: boolean;
-}
+import { CrushOptions } from './types.js';
 
 export const DEFAULT_OPTIONS: CrushOptions = {
   dryRun: false,

@@ -2,13 +2,66 @@ import { parse } from '@babel/parser';
 import _traverse from '@babel/traverse';
 import fs from 'fs/promises';
 import path from 'path';
+import { TrackerResult } from '../types.js';
 
 const traverse = typeof _traverse === 'function' ? _traverse : (_traverse as any).default;
+const IMAGE_EXT_RE = /\.(png|jpe?g)$/i;
 
-export interface TrackerResult {
-  usedImages: string[];
-  unusedImages: string[];
-  warnings: string[];
+function extractImageSources(value: string): string[] {
+  const sources: string[] = [];
+
+  // Handles both plain src values (`/img/a.jpg`) and srcset values (`/img/a.jpg 1x, /img/b.jpg 2x`).
+  for (const candidate of value.split(',')) {
+    const segment = candidate.trim();
+    if (!segment) continue;
+
+    const [urlToken] = segment.split(/\s+/);
+    if (!urlToken) continue;
+
+    const source = urlToken.split('?')[0];
+    if (IMAGE_EXT_RE.test(source)) {
+      sources.push(source);
+    }
+  }
+
+  return sources;
+}
+
+function registerUsedImageSource(
+  source: string,
+  file: string,
+  targetDir: string,
+  usedImagePaths: Set<string>,
+  absolutePublicUsages: Set<string>,
+) {
+  if (source.startsWith('http') || source.startsWith('data:')) {
+    return; // Ignore external/inline URLs
+  }
+
+  if (source.startsWith('/')) {
+    // Absolute public mapping. Next.js maps these to a `public` folder usually.
+    // Instead of guessing where the public folder is in a monorepo, we store the clean path.
+    const cleanSource = source.replace(/^\//, '');
+    absolutePublicUsages.add(cleanSource);
+
+    // Still add the default root guesses just in case it's a standard repo
+    const publicPath = path.join(targetDir, 'public', cleanSource);
+    const rootPath = path.join(targetDir, cleanSource);
+    const srcPublicPath = path.join(targetDir, 'src', 'public', cleanSource);
+
+    usedImagePaths.add(publicPath);
+    usedImagePaths.add(rootPath);
+    usedImagePaths.add(srcPublicPath);
+  } else {
+    // Relative mapping
+    const relativePath = path.resolve(path.dirname(file), source);
+    const rootPath = path.resolve(targetDir, source.replace(/^@\/?|^~/, ''));
+    const srcPath = path.resolve(targetDir, 'src', source.replace(/^@\/?|^~/, ''));
+
+    usedImagePaths.add(relativePath);
+    usedImagePaths.add(rootPath);
+    usedImagePaths.add(srcPath);
+  }
 }
 
 export async function trackAndReconcileImages(
@@ -19,6 +72,7 @@ export async function trackAndReconcileImages(
   const usedImagePaths = new Set<string>();
   const absolutePublicUsages = new Set<string>();
   const warnings: string[] = [];
+  const parseFailureFiles: string[] = [];
 
   for (const file of codeFiles) {
     const code = await fs.readFile(file, 'utf8');
@@ -30,6 +84,7 @@ export async function trackAndReconcileImages(
         plugins: ['jsx', 'typescript'],
       });
     } catch (e: any) {
+      parseFailureFiles.push(path.relative(targetDir, file));
       if (process.env.DEBUG_CRUSH) {
         console.warn(`[DEBUG] Failed to parse ${path.relative(targetDir, file)}: ${e.message}`);
       }
@@ -38,39 +93,11 @@ export async function trackAndReconcileImages(
 
     traverse(ast, {
       StringLiteral(pathNode: any) {
-        let source = pathNode.node.value;
-        if (typeof source !== 'string') return;
-        source = source.split('?')[0]; // Strip query params
+        const rawValue = pathNode.node.value;
+        if (typeof rawValue !== 'string') return;
 
-        if (source.match(/\.(png|jpe?g)$/i)) {
-          if (source.startsWith('http') || source.startsWith('data:')) {
-            return; // Ignore external/inline URLs
-          }
-
-          if (source.startsWith('/')) {
-            // Absolute public mapping. Next.js maps these to a `public` folder usually.
-            // Instead of guessing where the public folder is in a monorepo, we store the clean path.
-            const cleanSource = source.replace(/^\//, '');
-            absolutePublicUsages.add(cleanSource);
-
-            // Still add the default root guesses just in case it's a standard repo
-            const publicPath = path.join(targetDir, 'public', cleanSource);
-            const rootPath = path.join(targetDir, cleanSource);
-            const srcPublicPath = path.join(targetDir, 'src', 'public', cleanSource);
-
-            usedImagePaths.add(publicPath);
-            usedImagePaths.add(rootPath);
-            usedImagePaths.add(srcPublicPath);
-          } else {
-            // Relative mapping
-            const relativePath = path.resolve(path.dirname(file), source);
-            const rootPath = path.resolve(targetDir, source.replace(/^@\/?|^~/, ''));
-            const srcPath = path.resolve(targetDir, 'src', source.replace(/^@\/?|^~/, ''));
-
-            usedImagePaths.add(relativePath);
-            usedImagePaths.add(rootPath);
-            usedImagePaths.add(srcPath);
-          }
+        for (const source of extractImageSources(rawValue)) {
+          registerUsedImageSource(source, file, targetDir, usedImagePaths, absolutePublicUsages);
         }
       },
       TemplateLiteral(pathNode: any) {
@@ -121,5 +148,5 @@ export async function trackAndReconcileImages(
     }
   }
 
-  return { usedImages, unusedImages, warnings };
+  return { usedImages, unusedImages, warnings, parseFailureFiles };
 }

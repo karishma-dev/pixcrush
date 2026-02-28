@@ -4,6 +4,20 @@ All notable changes to pixcrush will be documented here.
 
 ---
 
+## [1.0.4] - 2026-02-28
+
+### Fixed
+
+- Track image candidates referenced in `srcset` / `srcSet` strings so they are no longer marked as unused
+- Prevent original images from being deleted during conversion before source code rewrites complete
+- Safety-gate deletion of converted originals and unused images when source files fail to parse
+
+### Changed
+
+- Moved shared TypeScript interfaces into a dedicated `src/types.ts` module
+
+---
+
 ## [1.0.1] - 2026-02-26
 
 ### Changed

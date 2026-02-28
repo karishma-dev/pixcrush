@@ -1,21 +1,12 @@
 import sharp from 'sharp';
 import fs from 'fs/promises';
 import path from 'path';
-
-export interface ConversionResult {
-  originalPath: string;
-  newPath: string;
-  originalSize: number;
-  newSize: number;
-  skipped: boolean; // True if WebP was larger or equal
-  error?: string;
-}
+import { ConversionResult } from '../types.js';
 
 export async function convertImagesToWebp(
   images: string[],
   quality: number,
   dryRun: boolean,
-  deleteOriginals: boolean,
 ): Promise<ConversionResult[]> {
   const results: ConversionResult[] = [];
 
@@ -44,10 +35,6 @@ export async function convertImagesToWebp(
 
       if (!dryRun) {
         await fs.writeFile(newPath, webpBuffer);
-
-        if (deleteOriginals) {
-          await fs.unlink(imgPath);
-        }
       }
 
       results.push({

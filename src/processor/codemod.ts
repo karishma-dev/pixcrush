@@ -3,7 +3,7 @@ import _traverse from '@babel/traverse';
 import _generate from '@babel/generator';
 import fs from 'fs/promises';
 import path from 'path';
-import { ConversionResult } from './image.js';
+import { CodeUpdateResult, ConversionResult } from '../types.js';
 
 const traverse = typeof _traverse === 'function' ? _traverse : (_traverse as any).default;
 const generate = typeof _generate === 'function' ? _generate : (_generate as any).default;
@@ -13,8 +13,9 @@ export async function updateCodeReferences(
   conversions: ConversionResult[],
   targetDir: string,
   dryRun: boolean,
-): Promise<number> {
+): Promise<CodeUpdateResult> {
   let updatedFilesCount = 0;
+  const parseFailureFiles: string[] = [];
 
   const conversionMap = new Map<string, string>();
   for (const c of conversions) {
@@ -24,7 +25,7 @@ export async function updateCodeReferences(
   }
 
   if (conversionMap.size === 0) {
-    return 0;
+    return { updatedFilesCount: 0, parseFailureFiles };
   }
 
   for (const file of codeFiles) {
@@ -37,6 +38,7 @@ export async function updateCodeReferences(
         plugins: ['jsx', 'typescript'],
       });
     } catch (e) {
+      parseFailureFiles.push(path.relative(targetDir, file));
       continue;
     }
 
@@ -115,5 +117,5 @@ export async function updateCodeReferences(
     }
   }
 
-  return updatedFilesCount;
+  return { updatedFilesCount, parseFailureFiles };
 }
