@@ -1,4 +1,4 @@
-import hero from "./hero.jpg"
+import hero from './hero.jpg';
 export default function App() {
   return (
     <div>
@@ -10,4 +10,3 @@ export default function App() {
     </div>
   );
 }
-

@@ -1,12 +1,12 @@
 import * as p from '@clack/prompts';
 import pc from 'picocolors';
-import { scanDirectory } from './scanner/index.js';
-import { trackAndReconcileImages } from './processor/tracker.js';
-import { convertImagesToWebp } from './processor/image.js';
-import { updateCodeReferences } from './processor/codemod.js';
+import { scanDirectory } from './scanner/index.ts';
+import { trackAndReconcileImages } from './processor/tracker.ts';
+import { convertImagesToWebp } from './processor/image.ts';
+import { updateCodeReferences } from './processor/codemod.ts';
 import fs from 'fs/promises';
 import path from 'path';
-import { CrushOptions } from './types.js';
+import type { CrushOptions } from './types.ts';
 
 async function deleteFiles(filePaths: string[]) {
   let deletedCount = 0;
@@ -51,7 +51,11 @@ export async function runCrush(targetDir: string, options: CrushOptions) {
         s.start(`Deleting ${unusedImages.length} unused image files...`);
         const deletedCount = await deleteFiles(unusedImages);
         s.stop(`Deleted ${deletedCount} unused images.`);
-      } else if (options.deleteOriginals && !options.dryRun && trackerParseFailureFiles.length > 0) {
+      } else if (
+        options.deleteOriginals &&
+        !options.dryRun &&
+        trackerParseFailureFiles.length > 0
+      ) {
         p.log.warn(
           `Skipped deleting unused images because ${trackerParseFailureFiles.length} source files could not be parsed during analysis.`,
         );
@@ -64,11 +68,7 @@ export async function runCrush(targetDir: string, options: CrushOptions) {
 
   // Phase 3: Convert Image
   s.start(`Converting ${usedImages.length} used images to WebP...`);
-  const conversions = await convertImagesToWebp(
-    usedImages,
-    options.quality,
-    options.dryRun,
-  );
+  const conversions = await convertImagesToWebp(usedImages, options.quality, options.dryRun);
 
   const successfulConversions = conversions.filter((c) => !c.skipped);
   const totalOriginalSize = successfulConversions.reduce((acc, c) => acc + c.originalSize, 0);

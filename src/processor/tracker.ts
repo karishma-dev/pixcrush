@@ -2,7 +2,7 @@ import { parse } from '@babel/parser';
 import _traverse from '@babel/traverse';
 import fs from 'fs/promises';
 import path from 'path';
-import { TrackerResult } from '../types.js';
+import type { TrackerResult } from '../types.ts';
 
 const traverse = typeof _traverse === 'function' ? _traverse : (_traverse as any).default;
 const IMAGE_EXT_RE = /\.(png|jpe?g)$/i;
@@ -85,7 +85,7 @@ export async function trackAndReconcileImages(
       });
     } catch (e: any) {
       parseFailureFiles.push(path.relative(targetDir, file));
-      if (process.env.DEBUG_CRUSH) {
+      if (process.env['DEBUG_CRUSH']) {
         console.warn(`[DEBUG] Failed to parse ${path.relative(targetDir, file)}: ${e.message}`);
       }
       continue;
@@ -118,7 +118,7 @@ export async function trackAndReconcileImages(
   const normalizedImageFiles = new Set(imageFiles.map((p) => path.normalize(p)));
   const normalizedUsedPaths = new Set(Array.from(usedImagePaths).map((p) => path.normalize(p)));
 
-  if (process.env.DEBUG_CRUSH) {
+  if (process.env['DEBUG_CRUSH']) {
     console.log('--- CRUSH DEBUG ---');
     console.log('targetDir:', targetDir);
     console.log('Normalized Glob Images:', Array.from(normalizedImageFiles));

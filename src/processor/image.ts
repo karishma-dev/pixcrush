@@ -1,7 +1,7 @@
 import sharp from 'sharp';
 import fs from 'fs/promises';
 import path from 'path';
-import { ConversionResult } from '../types.js';
+import type { ConversionResult } from '../types.ts';
 
 export async function convertImagesToWebp(
   images: string[],

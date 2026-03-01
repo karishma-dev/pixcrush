@@ -3,7 +3,7 @@ import _traverse from '@babel/traverse';
 import _generate from '@babel/generator';
 import fs from 'fs/promises';
 import path from 'path';
-import { CodeUpdateResult, ConversionResult } from '../types.js';
+import type { CodeUpdateResult, ConversionResult } from '../types.ts';
 
 const traverse = typeof _traverse === 'function' ? _traverse : (_traverse as any).default;
 const generate = typeof _generate === 'function' ? _generate : (_generate as any).default;

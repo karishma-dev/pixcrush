@@ -1,5 +1,5 @@
 import fg from 'fast-glob';
-import { ScanResult } from '../types.js';
+import type { ScanResult } from '../types.js';
 
 export async function scanDirectory(targetDir: string): Promise<ScanResult> {
   const imagePatterns = ['**/*.{png,jpg,jpeg,PNG,JPG,JPEG}'];
