@@ -1,6 +1,6 @@
 import { cac } from 'cac';
-import { runCrush } from './index.js';
-import { DEFAULT_OPTIONS } from './config.js';
+import { runCrush } from './index.ts';
+import { DEFAULT_OPTIONS } from './config.ts';
 import * as p from '@clack/prompts';
 import pc from 'picocolors';
 import path from 'path';

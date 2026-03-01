@@ -1,4 +1,4 @@
-import { CrushOptions } from './types.js';
+import type { CrushOptions } from './types.ts';
 
 export const DEFAULT_OPTIONS: CrushOptions = {
   dryRun: false,
