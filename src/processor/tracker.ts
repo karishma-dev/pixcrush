@@ -66,6 +66,28 @@ function registerUsedImageSource(
   }
 }
 
+function collectImageSourcesFromJson(value: unknown, sources: string[]) {
+  if (typeof value === 'string') {
+    for (const source of extractImageSources(value)) {
+      sources.push(source);
+    }
+    return;
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      collectImageSourcesFromJson(item, sources);
+    }
+    return;
+  }
+
+  if (value && typeof value === 'object') {
+    for (const nested of Object.values(value as Record<string, unknown>)) {
+      collectImageSourcesFromJson(nested, sources);
+    }
+  }
+}
+
 export async function trackAndReconcileImages(
   codeFiles: string[],
   imageFiles: string[],
@@ -89,6 +111,25 @@ export async function trackAndReconcileImages(
 
         for (const source of extractImageSources(rawValue)) {
           registerUsedImageSource(source, file, targetDir, usedImagePaths, absolutePublicUsages);
+        }
+      }
+      continue;
+    }
+
+    if (fileExt === '.json') {
+      try {
+        const parsed = JSON.parse(code) as unknown;
+        const jsonSources: string[] = [];
+        collectImageSourcesFromJson(parsed, jsonSources);
+        for (const source of jsonSources) {
+          registerUsedImageSource(source, file, targetDir, usedImagePaths, absolutePublicUsages);
+        }
+      } catch (e: any) {
+        parseFailureFiles.push(path.relative(targetDir, file));
+        if (process.env.DEBUG_CRUSH) {
+          console.warn(
+            `[DEBUG] Failed to parse JSON ${path.relative(targetDir, file)}: ${e.message}`,
+          );
         }
       }
       continue;

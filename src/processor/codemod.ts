@@ -104,6 +104,76 @@ function rewriteHtmlImageReferences(
   return { code: updatedCode, isModified };
 }
 
+function rewriteJsonStringValue(
+  value: string,
+  file: string,
+  conversionMap: Map<string, string>,
+): { value: string; modified: boolean } {
+  const directUpdate = getUpdatedImageSource(value, file, conversionMap);
+  if (directUpdate) {
+    return { value: directUpdate, modified: true };
+  }
+
+  let modified = false;
+  const segments = value.split(',');
+  const rewrittenSegments = segments.map((segment) => {
+    const trimmed = segment.trim();
+    if (!trimmed) return segment;
+
+    const leading = segment.match(/^\s*/)?.[0] ?? '';
+    const trailing = segment.match(/\s*$/)?.[0] ?? '';
+    const [urlToken, ...rest] = trimmed.split(/\s+/);
+    const updatedSource = getUpdatedImageSource(urlToken, file, conversionMap);
+    if (!updatedSource) return segment;
+
+    modified = true;
+    const descriptor = rest.length ? ` ${rest.join(' ')}` : '';
+    return `${leading}${updatedSource}${descriptor}${trailing}`;
+  });
+
+  if (!modified) {
+    return { value, modified: false };
+  }
+
+  return { value: rewrittenSegments.join(','), modified: true };
+}
+
+function rewriteJsonImageReferences(
+  parsedJson: unknown,
+  file: string,
+  conversionMap: Map<string, string>,
+): { value: unknown; isModified: boolean } {
+  if (typeof parsedJson === 'string') {
+    const rewritten = rewriteJsonStringValue(parsedJson, file, conversionMap);
+    return { value: rewritten.value, isModified: rewritten.modified };
+  }
+
+  if (Array.isArray(parsedJson)) {
+    let isModified = false;
+    const nextArray = parsedJson.map((item) => {
+      const rewritten = rewriteJsonImageReferences(item, file, conversionMap);
+      if (rewritten.isModified) isModified = true;
+      return rewritten.value;
+    });
+    return { value: nextArray, isModified };
+  }
+
+  if (parsedJson && typeof parsedJson === 'object') {
+    let isModified = false;
+    const nextObject: Record<string, unknown> = {};
+
+    for (const [key, value] of Object.entries(parsedJson as Record<string, unknown>)) {
+      const rewritten = rewriteJsonImageReferences(value, file, conversionMap);
+      if (rewritten.isModified) isModified = true;
+      nextObject[key] = rewritten.value;
+    }
+
+    return { value: nextObject, isModified };
+  }
+
+  return { value: parsedJson, isModified: false };
+}
+
 export async function updateCodeReferences(
   codeFiles: string[],
   conversions: ConversionResult[],
@@ -135,6 +205,22 @@ export async function updateCodeReferences(
         if (!dryRun) {
           await fs.writeFile(file, rewritten.code);
         }
+      }
+      continue;
+    }
+
+    if (fileExt === '.json') {
+      try {
+        const parsed = JSON.parse(code) as unknown;
+        const rewritten = rewriteJsonImageReferences(parsed, file, conversionMap);
+        if (rewritten.isModified) {
+          updatedFilesCount++;
+          if (!dryRun) {
+            await fs.writeFile(file, `${JSON.stringify(rewritten.value, null, 2)}\n`);
+          }
+        }
+      } catch (e) {
+        parseFailureFiles.push(path.relative(targetDir, file));
       }
       continue;
     }

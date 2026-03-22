@@ -3,7 +3,7 @@ import { ScanResult } from '../types.js';
 
 export async function scanDirectory(targetDir: string): Promise<ScanResult> {
   const imagePatterns = ['**/*.{png,jpg,jpeg,PNG,JPG,JPEG}'];
-  const codePatterns = ['**/*.{js,jsx,ts,tsx,html,htm}'];
+  const codePatterns = ['**/*.{js,jsx,ts,tsx,html,htm,json}'];
 
   const ignore = [
     '**/node_modules/**',
