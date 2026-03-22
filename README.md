@@ -71,7 +71,7 @@ pixcrush . --delete-originals --quality 85
 
 ## How It Works
 
-1. **Scan** - Discovers all `.png`/`.jpg` and `.js`/`.ts`/`.jsx`/`.tsx`/`.html`/`.htm` files using `fast-glob`.
+1. **Scan** - Discovers all `.png`/`.jpg` and `.js`/`.ts`/`.jsx`/`.tsx`/`.html`/`.htm`/`.json` files using `fast-glob`.
 2. **Analyze** - Parses your source code with Babel AST to identify which images are actually used.
 3. **Convert** - Compresses used images to WebP using `sharp` (in-memory, only writes if smaller).
 4. **Rewrite** - Updates import paths and `src` attributes in your source code.
@@ -82,7 +82,7 @@ pixcrush . --delete-originals --quality 85
 ## Limitations
 
 - Dynamic image paths like `` `images/${name}.png` `` are detected and warned about but not automatically rewritten.
-- CSS files are not parsed. Supported source files are `.js`, `.ts`, `.jsx`, `.tsx`, `.html`, and `.htm`.
+- CSS files are not parsed. Supported source files are `.js`, `.ts`, `.jsx`, `.tsx`, `.html`, `.htm`, and `.json`.
 
 ---
 
