@@ -2,6 +2,32 @@
 
 All notable changes to pixcrush will be documented here.
 
+## [1.0.7] - 2026-03-22
+
+### Changed
+
+- Updated changelog entries and release notes organization
+
+---
+
+## [1.0.6] - 2026-03-22
+
+### Added
+
+- Added source scanning support for `.json` files
+- Added image usage tracking from nested JSON string values (including manifest-like structures)
+- Added rewrite support for image references in `.json` values, with query-string preservation
+
+---
+
+## [1.0.5] - 2026-03-22
+
+### Added
+
+- Added source scanning support for `.html` and `.htm` files
+- Added image usage tracking from HTML attributes (`src`, `srcset`, `poster`, `href`, `content`, `data-src`, `data-srcset`)
+- Added rewrite support for image references in `.html`/`.htm` files, including `srcset`-style values and query-string preservation
+
 ---
 
 ## [1.0.4] - 2026-02-28
