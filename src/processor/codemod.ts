@@ -7,6 +7,102 @@ import { CodeUpdateResult, ConversionResult } from '../types.js';
 
 const traverse = typeof _traverse === 'function' ? _traverse : (_traverse as any).default;
 const generate = typeof _generate === 'function' ? _generate : (_generate as any).default;
+const IMAGE_EXT_RE = /\.(png|jpe?g)$/i;
+
+function findMatchedOriginalPath(
+  source: string,
+  file: string,
+  conversionMap: Map<string, string>,
+): string | undefined {
+  if (source.startsWith('/')) {
+    const cleanSource = source.replace(/^\//, '');
+    for (const [origPath] of conversionMap.entries()) {
+      if (origPath.endsWith(path.join('public', cleanSource)) || origPath.endsWith(cleanSource)) {
+        return origPath;
+      }
+    }
+    return undefined;
+  }
+
+  const relativePath = path.normalize(path.resolve(path.dirname(file), source));
+  if (conversionMap.has(relativePath)) {
+    return relativePath;
+  }
+
+  const cleanSource = source.replace(/^@\/?|^~/, '');
+  for (const [origPath] of conversionMap.entries()) {
+    if (origPath.endsWith(cleanSource)) {
+      return origPath;
+    }
+  }
+
+  return undefined;
+}
+
+function getUpdatedImageSource(
+  fullOriginalSource: string,
+  file: string,
+  conversionMap: Map<string, string>,
+): string | undefined {
+  const sourceWithoutQuery = fullOriginalSource.split('?')[0];
+  if (!IMAGE_EXT_RE.test(sourceWithoutQuery)) return undefined;
+
+  const matchedOriginalPath = findMatchedOriginalPath(sourceWithoutQuery, file, conversionMap);
+  if (!matchedOriginalPath) return undefined;
+
+  const queryParam = fullOriginalSource.includes('?')
+    ? '?' + fullOriginalSource.split('?')[1]
+    : '';
+  return sourceWithoutQuery.replace(IMAGE_EXT_RE, '.webp') + queryParam;
+}
+
+function rewriteHtmlImageReferences(
+  code: string,
+  file: string,
+  conversionMap: Map<string, string>,
+): { code: string; isModified: boolean } {
+  let isModified = false;
+  let updatedCode = code;
+
+  // Handle srcset-like attributes where each segment can carry a density descriptor.
+  updatedCode = updatedCode.replace(
+    /\b(srcset|data-srcset)\s*=\s*(["'])(.*?)\2/gi,
+    (full, attrName, quote, rawValue) => {
+      const segments = rawValue.split(',');
+      const rewrittenSegments = segments.map((segment: string) => {
+        const trimmed = segment.trim();
+        if (!trimmed) return segment;
+
+        const leading = segment.match(/^\s*/)?.[0] ?? '';
+        const trailing = segment.match(/\s*$/)?.[0] ?? '';
+        const [urlToken, ...rest] = trimmed.split(/\s+/);
+
+        const updatedSource = getUpdatedImageSource(urlToken, file, conversionMap);
+        if (!updatedSource) return segment;
+
+        isModified = true;
+        const descriptor = rest.length ? ` ${rest.join(' ')}` : '';
+        return `${leading}${updatedSource}${descriptor}${trailing}`;
+      });
+
+      return `${attrName}=${quote}${rewrittenSegments.join(',')}${quote}`;
+    },
+  );
+
+  // Handle plain URL-bearing attributes that can reference images in HTML.
+  updatedCode = updatedCode.replace(
+    /\b(src|href|poster|content|data-src)\s*=\s*(["'])(.*?)\2/gi,
+    (full, attrName, quote, rawValue) => {
+      const updatedSource = getUpdatedImageSource(rawValue, file, conversionMap);
+      if (!updatedSource) return full;
+
+      isModified = true;
+      return `${attrName}=${quote}${updatedSource}${quote}`;
+    },
+  );
+
+  return { code: updatedCode, isModified };
+}
 
 export async function updateCodeReferences(
   codeFiles: string[],
@@ -30,6 +126,18 @@ export async function updateCodeReferences(
 
   for (const file of codeFiles) {
     const code = await fs.readFile(file, 'utf8');
+    const fileExt = path.extname(file).toLowerCase();
+
+    if (fileExt === '.html' || fileExt === '.htm') {
+      const rewritten = rewriteHtmlImageReferences(code, file, conversionMap);
+      if (rewritten.isModified) {
+        updatedFilesCount++;
+        if (!dryRun) {
+          await fs.writeFile(file, rewritten.code);
+        }
+      }
+      continue;
+    }
 
     let ast;
     try {
@@ -46,57 +154,21 @@ export async function updateCodeReferences(
 
     traverse(ast, {
       StringLiteral(pathNode: any) {
-        let source = pathNode.node.value;
+        const source = pathNode.node.value;
         if (typeof source !== 'string') return;
 
         // Save the raw original in case there was a query param we need to preserve visually
         const fullOriginalSource = source;
-        source = source.split('?')[0];
 
-        if (source.match(/\.(png|jpe?g)$/i)) {
-          let matchedOriginalPath: string | undefined;
-
-          if (source.startsWith('/')) {
-            const cleanSource = source.replace(/^\//, '');
-            for (const [origPath] of conversionMap.entries()) {
-              if (
-                origPath.endsWith(path.join('public', cleanSource)) ||
-                origPath.endsWith(cleanSource)
-              ) {
-                matchedOriginalPath = origPath;
-                break;
-              }
-            }
-          } else {
-            const relativePath = path.normalize(path.resolve(path.dirname(file), source));
-            if (conversionMap.has(relativePath)) {
-              matchedOriginalPath = relativePath;
-            } else {
-              const cleanSource = source.replace(/^@\/?|^~/, '');
-              for (const [origPath] of conversionMap.entries()) {
-                if (origPath.endsWith(cleanSource)) {
-                  matchedOriginalPath = origPath;
-                  break;
-                }
-              }
-            }
+        const newSource = getUpdatedImageSource(fullOriginalSource, file, conversionMap);
+        if (newSource) {
+          pathNode.node.value = newSource;
+          if (pathNode.node.extra) {
+            pathNode.node.extra.rawValue = newSource;
+            const originalQuote = (pathNode.node.extra as any).raw?.[0] || '"';
+            (pathNode.node.extra as any).raw = `${originalQuote}${newSource}${originalQuote}`;
           }
-
-          if (matchedOriginalPath) {
-            // Reapply query param if it existed on the match (e.g. img.png?url -> img.webp?url)
-            const queryParam = fullOriginalSource.includes('?')
-              ? '?' + fullOriginalSource.split('?')[1]
-              : '';
-            const newSource = source.replace(/\.(png|jpe?g)$/i, '.webp') + queryParam;
-
-            pathNode.node.value = newSource;
-            if (pathNode.node.extra) {
-              pathNode.node.extra.rawValue = newSource;
-              const originalQuote = (pathNode.node.extra as any).raw?.[0] || '"';
-              (pathNode.node.extra as any).raw = `${originalQuote}${newSource}${originalQuote}`;
-            }
-            isModified = true;
-          }
+          isModified = true;
         }
       },
     });

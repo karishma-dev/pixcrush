@@ -6,6 +6,8 @@ import { TrackerResult } from '../types.js';
 
 const traverse = typeof _traverse === 'function' ? _traverse : (_traverse as any).default;
 const IMAGE_EXT_RE = /\.(png|jpe?g)$/i;
+const HTML_IMAGE_ATTR_RE =
+  /\b(?:src|srcset|poster|href|content|data-src|data-srcset)\s*=\s*(["'])(.*?)\1/gi;
 
 function extractImageSources(value: string): string[] {
   const sources: string[] = [];
@@ -76,6 +78,21 @@ export async function trackAndReconcileImages(
 
   for (const file of codeFiles) {
     const code = await fs.readFile(file, 'utf8');
+    const fileExt = path.extname(file).toLowerCase();
+
+    if (fileExt === '.html' || fileExt === '.htm') {
+      HTML_IMAGE_ATTR_RE.lastIndex = 0;
+      let match: RegExpExecArray | null;
+      while ((match = HTML_IMAGE_ATTR_RE.exec(code)) !== null) {
+        const rawValue = match[2];
+        if (typeof rawValue !== 'string') continue;
+
+        for (const source of extractImageSources(rawValue)) {
+          registerUsedImageSource(source, file, targetDir, usedImagePaths, absolutePublicUsages);
+        }
+      }
+      continue;
+    }
 
     let ast;
     try {
